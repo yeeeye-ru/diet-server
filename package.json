@@ -12,6 +12,7 @@
     "serverless-http": "^3.2.0" 
   },
   "engines": {
-    "node": "24.x"
+    "node": "20.x"
   }
 }
+
