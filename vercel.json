@@ -1,5 +1,10 @@
 {
+  "functions": {
+    "api/server.js": {
+      "runtime": "nodejs24.x"
+    }
+  },
   "rewrites": [
-    { "source": "/(.*)", "destination": "/api/server.js" }
+    { "source": "/api/(.*)", "destination": "/api/server.js" }
   ]
 }
