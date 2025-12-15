@@ -1,7 +1,7 @@
 {
   "functions": {
     "api/posts.js": {
-      "runtime": "nodejs@20.x"  // 注意格式：nodejs@版本号
+      "runtime": "nodejs@20.x"  
     }
   },
   "rewrites": [
