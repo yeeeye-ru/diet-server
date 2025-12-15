@@ -1,13 +1,13 @@
 const jsonServer = require('json-server');
 const server = jsonServer.create();
-const router = jsonServer.router('db.json');
+// 关键：向上一层找db.json（因为server.js在api子文件夹）
+const router = jsonServer.router('../db.json');
 const middlewares = jsonServer.defaults();
 
 server.use(middlewares);
 server.use(router);
 
-// Vercel Serverless要求导出请求处理函数
+// Vercel Serverless函数必须导出这个处理函数
 module.exports = (req, res) => {
-  // 转发请求到json-server
   server(req, res);
 };
