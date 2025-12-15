@@ -1,7 +1,7 @@
 {
   "functions": {
     "api/server.js": {
-      "runtime": "nodejs@24.10.0" 
+      "runtime": "nodejs@20.x"
     }
   },
   "rewrites": [
