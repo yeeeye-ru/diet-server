@@ -234,4 +234,6 @@ app.use((err, req, res, next) => {
 });
 
 // 12. Vercel Serverless适配（核心）
-module.exports.handler = serverless(app);
+// 替换原有的导出代码
+module.exports = serverless(app);
+
