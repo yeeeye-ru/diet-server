@@ -1,9 +1,4 @@
 {
-  "functions": {
-    "api/posts.js": {
-      "runtime": "nodejs@20.x"  
-    }
-  },
   "rewrites": [
     { "source": "/api/posts", "destination": "/api/posts.js" }
   ]
