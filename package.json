@@ -2,7 +2,7 @@
   "name": "diet-server",
   "version": "1.0.0",
   "engines": {
-    "node": "20.x"
+    "node": "24.x"  // 改为 24.x
   },
   "scripts": {
     "start": "node api/server.js"
