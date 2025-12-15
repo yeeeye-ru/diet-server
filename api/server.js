@@ -7,7 +7,7 @@ const PORT = process.env.PORT || 3000;
 
 // Supabase配置（替换成你的真实信息）
 const supabaseUrl = 'https://ppkkgta1yioemdytog.supabase.co';
-const supabaseKey = '你的anon public密钥';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwa2tndGFpeWlveWVtZHlvdG9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU4MDk5MTAsImV4cCI6MjA4MTM4NTkxMH0.G_QPD2TMkKp5bBxcC87RYt75CzHo8GOdNbqzTjw8DoQ';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // 中间件
@@ -51,4 +51,5 @@ app.listen(PORT, () => {
 });
 
 // 暴露给Vercel（关键）
+
 module.exports = app;
