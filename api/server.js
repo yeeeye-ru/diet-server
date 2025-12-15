@@ -1,82 +1,136 @@
 const express = require('express');
-const low = require('lowdb');
-const FileSync = require('lowdb/adapters/FileSync');
+const { createClient } = require('@vercel/kv');
 const cors = require('cors');
 const app = express();
 
-// 1. 配置跨域（允许前端访问）
-app.use(cors());
+// 1. 配置跨域（允许所有前端域名访问）
+app.use(cors({ origin: '*' }));
 // 2. 解析JSON请求体
 app.use(express.json());
 
-// 3. 初始化lowdb（持久化存储到db.json）
-const adapter = new FileSync('../db.json'); // 指向项目根目录的db.json
-const db = low(adapter);
+// 3. 初始化Vercel KV客户端（自动读取环境变量）
+const kv = createClient({
+  url: process.env.KV_REST_API_URL,
+  token: process.env.KV_REST_API_TOKEN,
+});
 
-// 4. 初始化数据库结构（首次运行创建）
-db.defaults({ 
-  posts: [], 
-  comments: [],
-  users: []
-}).write();
+// ========== 工具函数：KV数据操作 ==========
+// 获取所有帖子
+async function getPosts() {
+  const posts = await kv.get('posts');
+  return posts || [];
+}
+
+// 保存所有帖子
+async function setPosts(posts) {
+  await kv.set('posts', posts);
+}
+
+// 获取某帖子的评论
+async function getComments(postId) {
+  const comments = await kv.get(`comments_${postId}`);
+  return comments || [];
+}
+
+// 保存某帖子的评论
+async function setComments(postId, comments) {
+  await kv.set(`comments_${postId}`, comments);
+}
 
 // ========== 帖子接口 ==========
-// 获取所有帖子
-app.get('/posts', (req, res) => {
-  const posts = db.get('posts').value();
-  res.json(posts);
+// 1. 获取所有帖子
+app.get('/posts', async (req, res) => {
+  try {
+    const posts = await getPosts();
+    res.json(posts);
+  } catch (err) {
+    res.status(500).json({ error: '获取帖子失败', msg: err.message });
+  }
 });
 
-// 获取单条帖子
-app.get('/posts/:id', (req, res) => {
-  const post = db.get('posts').find({ id: req.params.id }).value();
-  if (!post) return res.status(404).json({ error: '帖子不存在' });
-  res.json(post);
+// 2. 获取单条帖子
+app.get('/posts/:id', async (req, res) => {
+  try {
+    const posts = await getPosts();
+    const post = posts.find(p => p.id === req.params.id);
+    if (!post) return res.status(404).json({ error: '帖子不存在' });
+    res.json(post);
+  } catch (err) {
+    res.status(500).json({ error: '获取帖子失败', msg: err.message });
+  }
 });
 
-// 新增帖子
-app.post('/posts', (req, res) => {
-  const newPost = {
-    id: Date.now().toString(), // 用时间戳生成唯一ID
-    ...req.body,
-    createdAt: new Date().toISOString()
-  };
-  db.get('posts').push(newPost).write();
-  res.json(newPost);
+// 3. 新增帖子
+app.post('/posts', async (req, res) => {
+  try {
+    const posts = await getPosts();
+    const newPost = {
+      id: Date.now().toString(), // 时间戳作为唯一ID
+      ...req.body,
+      createdAt: new Date().toISOString()
+    };
+    posts.push(newPost);
+    await setPosts(posts);
+    res.json(newPost);
+  } catch (err) {
+    res.status(500).json({ error: '发布帖子失败', msg: err.message });
+  }
 });
 
-// 修改帖子（点赞/评论数）
-app.patch('/posts/:id', (req, res) => {
-  const post = db.get('posts').find({ id: req.params.id });
-  if (!post.value()) return res.status(404).json({ error: '帖子不存在' });
-  post.assign(req.body).write();
-  res.json(post.value());
+// 4. 修改帖子（点赞/评论数）
+app.patch('/posts/:id', async (req, res) => {
+  try {
+    const posts = await getPosts();
+    const postIndex = posts.findIndex(p => p.id === req.params.id);
+    if (postIndex === -1) return res.status(404).json({ error: '帖子不存在' });
+
+    posts[postIndex] = { ...posts[postIndex], ...req.body };
+    await setPosts(posts);
+    res.json(posts[postIndex]);
+  } catch (err) {
+    res.status(500).json({ error: '修改帖子失败', msg: err.message });
+  }
 });
 
-// 删除帖子
-app.delete('/posts/:id', (req, res) => {
-  db.get('posts').remove({ id: req.params.id }).write();
-  // 同时删除该帖子的所有评论
-  db.get('comments').remove({ postId: req.params.id }).write();
-  res.json({ success: true });
+// 5. 删除帖子
+app.delete('/posts/:id', async (req, res) => {
+  try {
+    let posts = await getPosts();
+    posts = posts.filter(p => p.id !== req.params.id);
+    await setPosts(posts);
+    await kv.del(`comments_${req.params.id}`); // 删除对应评论
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: '删除帖子失败', msg: err.message });
+  }
 });
 
 // ========== 评论接口 ==========
-// 获取帖子的所有评论
-app.get('/comments', (req, res) => {
-  const comments = db.get('comments').filter({ postId: req.query.postId }).value();
-  res.json(comments);
+// 1. 获取帖子的所有评论
+app.get('/comments', async (req, res) => {
+  try {
+    const comments = await getComments(req.query.postId);
+    res.json(comments);
+  } catch (err) {
+    res.status(500).json({ error: '获取评论失败', msg: err.message });
+  }
 });
 
-// 新增评论
-app.post('/comments', (req, res) => {
-  const newComment = {
-    id: Date.now().toString() + Math.random().toString(36).slice(2),
-    ...req.body,
-    createdAt: new Date().toISOString()
-  };
-  db.get('comments').push(newComment).write();
-  res.json(newComment);
+// 2. 新增评论
+app.post('/comments', async (req, res) => {
+  try {
+    const comments = await getComments(req.body.postId);
+    const newComment = {
+      id: Date.now().toString() + Math.random().toString(36).slice(2),
+      ...req.body,
+      createdAt: new Date().toISOString()
+    };
+    comments.push(newComment);
+    await setComments(req.body.postId, comments);
+    res.json(newComment);
+  } catch (err) {
+    res.status(500).json({ error: '发布评论失败', msg: err.message });
+  }
 });
 
 // ========== Vercel Serverless适配 ==========
